@@ -1,50 +1,166 @@
-import { cache } from "./index";
+import dependsOn from './index'
 
-describe("decorator cache getter", () => {
-  it("should cache result of getter", () => {
+describe('dependsOn: cache decorator', () => {
+  it('should permanently cache getter', () => {
     class Test {
-      i = 0;
+      bool = false
 
-      @cache
-      get incr() {
-        return ++this.i;
+      @dependsOn([])
+      get random() {
+        return Math.random()
       }
     }
 
-    const test = new Test();
+    const test = new Test()
+    const initial = test.random
 
-    expect(test.incr).toEqual(1);
-    expect(test.incr).toEqual(1);
-    expect(test.incr).toEqual(1);
+    expect(test.random).toEqual(initial)
+    
+    test.bool = true
+    const update = test.random
+    
+    expect(update).toEqual(initial)
+    expect(test.random).toEqual(initial)
+    expect(test.random).toEqual(update)
+  })
 
-    expect(test.i).toEqual(1);
-  });
-
-  it("should cache result of static getter", () => {
+  it('should cache getter for one dependent property', () => {
     class Test {
-      static i = 0;
+      bool = false
 
-      @cache
-      static get incr() {
-        return ++this.i;
+      @dependsOn(['bool'])
+      get random() {
+        return Math.random()
       }
     }
 
-    expect(Test.incr).toEqual(1);
-    expect(Test.incr).toEqual(1);
-    expect(Test.incr).toEqual(1);
+    const test = new Test()
+    const initial = test.random
 
-    expect(Test.i).toEqual(1);
-  });
+    expect(test.random).toEqual(initial)
+    expect(test.random).toEqual(initial)
 
-  it("should raise when decorating a non-getter", () => {
+    test.bool = true
+    const update = test.random
+    
+    expect(update).not.toEqual(initial)
+    expect(test.random).toEqual(update)
+    expect(test.random).toEqual(update)
+  })
+
+  it('should cache getter for multiple dependent properties', () => {
+    class Test {
+      num = 0
+      str = ''
+
+      @dependsOn(['num', 'str'])
+      get random() {
+        return Math.random()
+      }
+    }
+
+    const test = new Test()
+    let initial = test.random
+    expect(test.random).toEqual(initial)
+    expect(test.random).toEqual(initial)
+    
+    test.num = 1
+    let update = test.random
+    expect(update).not.toEqual(initial)
+    expect(test.random).toEqual(update)
+    expect(test.random).toEqual(update)
+
+    initial = update
+    test.str = 'hello'
+    update = test.random
+    expect(update).not.toEqual(initial)
+    expect(test.random).toEqual(update)
+    expect(test.random).toEqual(update)
+  })
+
+  it('should cache the getter with shallow equality for dependent object', () => {
+    class Test {
+      obj = { a: 1, b: { c: 1 } }
+
+      @dependsOn(['obj'])
+      get random() {
+        return Math.random()
+      }
+    }
+
+    const test = new Test()
+    let initial = test.random
+
+    test.obj.b.c = 2
+    let update = test.random
+    expect(update).toEqual(initial)
+    expect(test.random).toEqual(update)
+    expect(test.random).toEqual(update)
+
+    initial = update
+    test.obj.b = { c: 3 }
+    update = test.random
+    expect(update).toEqual(initial)
+    expect(test.random).toEqual(update)
+    expect(test.random).toEqual(update)
+
+    initial = update
+    test.obj = { ...test.obj }
+    update = test.random
+    expect(update).not.toEqual(initial)
+    expect(test.random).toEqual(update)
+    expect(test.random).toEqual(update)
+  })
+
+  it('should cache getter and update cache with setter', () => {
+    class Test {
+      bool = false
+      count = 0
+
+      @dependsOn(['bool'])
+      get random() {
+        return Math.random()
+      }
+
+      set random(value: number) {
+        this.count ++
+      }
+    }
+
+    const test = new Test()
+    let initial = test.random
+    expect(test.random).toEqual(initial)
+
+    test.bool = true
+    let update = test.random
+    expect(update).not.toEqual(initial)
+    expect(test.random).toEqual(update)
+    expect(test.random).toEqual(update)
+
+    test.random = 5
+    expect(test.count).toEqual(1)
+    expect(test.random).toEqual(5)
+    expect(test.random).toEqual(5)
+
+    initial = test.random
+    update = test.random
+    expect(update).toEqual(initial)
+
+    test.bool = false
+    update = test.random
+    expect(update).not.toEqual(initial)
+    expect(test.random).toEqual(update)
+    expect(test.random).toEqual(update)
+  })
+
+  it('should raise when decorating a non-getter', () => {
     expect(() => {
       class Test {
-        @cache
+        @dependsOn([])
         method() {
           /* Empty */
         }
       }
-    }).toThrowError(TypeError);
-  });
-});
+    }).toThrowError(TypeError)
+  })
+})

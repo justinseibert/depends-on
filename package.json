@@ -1,7 +1,7 @@
 {
-  "name": "decorator-cache-getter",
+  "name": "depends-on",
   "version": "1.0.0",
-  "description": "Simple decorator for caching getters on first access",
+  "description": "A decorator for caching class getters and updating the cache based on dependent properties",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
   "files": [
@@ -19,7 +19,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/blakeembrey/decorator-cache-getter.git"
+    "url": "git://github.com/justinseibert/depends-on.git"
   },
   "keywords": [
     "decorator",
@@ -31,15 +31,22 @@
     "es7"
   ],
   "author": {
-    "name": "Blake Embrey",
-    "email": "hello@blakeembrey.com",
-    "url": "http://blakeembrey.me"
+    "name": "Justin Seibert",
+    "email": "code@besttest.studio",
+    "url": "https://besttest.studio"
   },
+  "contributors": [
+    {
+      "name": "Blake Embrey",
+      "email": "hello@blakeembrey.com",
+      "url": "http://blakeembrey.me"
+    }
+  ],
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/blakeembrey/decorator-cache-getter/issues"
+    "url": "https://github.com/justinseibert/depends-on/issues"
   },
-  "homepage": "https://github.com/blakeembrey/decorator-cache-getter",
+  "homepage": "https://github.com/justinseibert/depends-on",
   "jest": {
     "roots": [
       "<rootDir>/src/"
