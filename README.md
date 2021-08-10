@@ -1,11 +1,14 @@
 # dependsOn
 
+[![NPM version][npm-image]][npm-url]
+[![Build status][travis-image]][travis-url]
+
 A decorator for caching class getters and updating the cache based on dependent properties
 
 ## Installation
 
 ```sh
-npm install depends-on --save
+npm install @justinseibert/depends-on --save
 ```
 
 ## Usage
@@ -17,7 +20,7 @@ Properties added to the dependency array are also tracked in the cache, but do n
 If the dependencies are unchanged, the accessor will return the last cached value _instead of_ executing it's underlying function.
 
 ```js
-import dependsOn from 'depends-on'
+import dependsOn from '@justinseibert/depends-on'
 
 class Sample {
   someProperty = 1
@@ -92,69 +95,13 @@ sample.count++; // 1
 console.log(sample.random === 5); // false
 ```
 
-## Example
-
-There's some very complicated calculations here, but I'm really only gonna leave the house if the fridge is empty and I'm feeling it.
-
-```js
-import dependsOn from "depends-on"
-
-class Person {
-  this.meals = 5
-  this.condiments = 20
-  this.isFridgeEmpty = false
-  this.isFeelingSocial = false
-
-  eatFood() {
-    this.meals --
-    this.condiments -= 0.25
-    if (this.meals / this.condiments < 0.1) {
-      this.isFridgeEmpty = true
-    }
-  }
-
-  getGroceries() {
-    this.meals += 5
-    this.condiments += 2
-    this.isFridgeEmpty = false
-  }
-
-  @dependsOn(['isFridgeEmpty', 'isFeelingSocial'])
-  get willLeaveHouseToday() {
-    const mood = this.calculateMood(
-      nextHourForecast(this.location),
-      this.isFeelingSocial,
-      this.workStress,
-      relativePositionOfMercuryToSun(this.sign),
-      this.isFridgeEmpty,
-      this.coolOutfitAvailability,
-      this.childhoodMemories,
-      this.abilityToTolerateOtherPeople,
-      currentGlobalSociopoliticalLandscape(this.bloodPressure),
-      affordabilityOfDeliveryFees(),
-      this.likelihoodOfInteractingWithNeighborhoodCats,
-    )
-
-    if (mood >= MOOD_LEVELS.DECENT) {
-      return Math.random() > 0.5
-    }
-    return false
-  }
-}
-```
-
-```js
-const me = new Person();
-
-let motivation = me.willLeaveHouseToday();
-while (motivation === false) {
-  me.eatFood();
-  motivation = me.willLeaveHouseToday();
-}
-
-me.getGroceries();
-```
-
 ## License
 
 MIT
+
+[npm-image]: https://img.shields.io/npm/v/@justinseibert/depends-on.svg?style=flat
+[npm-url]: https://www.npmjs.com/package/@justinseibert/depends-on
+[downloads-image]: https://img.shields.io/npm/dm/@justinseibert/depends-on.svg?style=flat
+[downloads-url]: https://npmjs.org/package/@justinseibert/depends-on
+[travis-image]: https://travis-ci.org/justinseibert/depends-on.svg?branch=master
+[travis-url]: https://travis-ci.org/justinseibert/depends-on

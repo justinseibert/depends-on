@@ -1,5 +1,5 @@
 {
-  "name": "depends-on",
+  "name": "@justinseibert/depends-on",
   "version": "1.0.0",
   "description": "A decorator for caching class getters and updating the cache based on dependent properties",
   "main": "dist/index.js",
@@ -30,17 +30,9 @@
     "memo",
     "es7"
   ],
-  "author": {
-    "name": "Justin Seibert",
-    "email": "code@besttest.studio",
-    "url": "https://besttest.studio"
-  },
+  "author": "Justin Seibert <code@besttest.studio> (https://besttest.studio)",
   "contributors": [
-    {
-      "name": "Blake Embrey",
-      "email": "hello@blakeembrey.com",
-      "url": "http://blakeembrey.me"
-    }
+    "Blake Embrey <hello@blakeembrey.com> (http://blakeembrey.me)"
   ],
   "license": "MIT",
   "bugs": {
@@ -90,5 +82,6 @@
     "tslint-config-prettier": "^1.17.0",
     "tslint-config-standard": "^8.0.1",
     "typescript": "^3.2.4"
-  }
+  },
+  "dependencies": {}
 }
