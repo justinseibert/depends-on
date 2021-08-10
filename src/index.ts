@@ -4,27 +4,22 @@ export interface CachePropertyDescriptor<T, R> extends PropertyDescriptor {
 
 const PROPS = `__dependsOn_properties`
 const CACHE = `__dependsOn_comparator`
+const RELAT = `__dependsOn_related`
 
 const dependsOn = (dependencies: string[]) => {
   return function <T,R>(target: any, key: PropertyKey, descriptor: CachePropertyDescriptor<T, R>) {
     // adds cache trackers to the object
-    if (!target[PROPS]) {
-      Object.defineProperty(target, PROPS, {
-        configurable: false,
-        enumerable: false,
-        writable: false,
+    [PROPS, CACHE, RELAT].forEach((item: string) => {
+      if (target[item]) {
+        return
+      }
+      Object.defineProperty(target, item, {
+        configurable: true,
+        enumerable: true,
+        writable: true,
         value: {},
       })
-    }
-    if (!target[CACHE]) {
-      Object.defineProperty(target, CACHE, {
-        configurable: false,
-        enumerable: false,
-        writable: false,
-        value: {},
-      })
-    }
-
+    })
 
     // record any existing get/set actions
     const getter = descriptor.get
@@ -38,8 +33,8 @@ const dependsOn = (dependencies: string[]) => {
     
     descriptor.get = function (this: any) {
       // set all initial values for dependent properties
+      // perform only during first access
       if (typeof this[PROPS][currentKey] === 'undefined') {
-        // perform only during first access
         dependencies.forEach((dependency: string) => {
           const propertyDescriptor = Object.getOwnPropertyDescriptor(this, dependency)
           if (
@@ -50,16 +45,30 @@ const dependsOn = (dependencies: string[]) => {
             this[PROPS][dependency] = propertyDescriptor.value
             this[CACHE][dependency] = this[PROPS][dependency]
           }
+          // record an array of items that depend on this value (i.e. reverse dependencies)
+          this[RELAT][dependency] = [...(this[RELAT][dependency] || []), currentKey]
         })
       }
 
-
-      // add current key to dependencies in order to force initial update
-      const shouldUpdate = [...dependencies, currentKey].findIndex((dependency: string) => {
+      // add current key to dependencies array in order to force an initial update or shortcut an invalidated cache
+      // check for any undefined/invalid caches to determine whether an update is necessary
+      const shouldUpdate = [currentKey, ...dependencies].findIndex((dependency: string) => {
+        // test cached getter values
+        if (
+          typeof this[CACHE][dependency] === 'undefined' ||
+          typeof this[PROPS][dependency] === 'undefined' ||
+          this[PROPS][dependency] !== this[CACHE][dependency]
+          ) {
+            // current dependency's cached values are new or invalid
+            return true
+          }
+          
+        // test cached property values
         const propertyDescriptor = Object.getOwnPropertyDescriptor(this, dependency)
         if (
           propertyDescriptor &&
-          this[PROPS][dependency] !== propertyDescriptor.value
+          (this[PROPS][dependency] !== propertyDescriptor.value ||
+          typeof this[CACHE][dependency] === 'undefined')
         ) {
           // current dependency is a property with a new value, record to cache
           this[PROPS][dependency] = propertyDescriptor.value
@@ -67,21 +76,26 @@ const dependsOn = (dependencies: string[]) => {
           return true
         }
 
-        if (
-          typeof this[PROPS][dependency] === 'undefined' ||
-          this[PROPS][dependency] !== this[CACHE][dependency]
-        ) {
-          // current dependency's cached values are new or outdated
-          return true
-        }
-
-        // cache is in sync
+        // cached dependency is valid, no update necesssary
         return false
       }) > -1
 
+      // if cache is invalid, invalidate all related items too
+      const invalidateRelated = (cacheKey: string) => {
+        const relatedCache = [ ...(this[RELAT][cacheKey] || []) ]
+        
+        while(relatedCache.length) {
+          const relatedKey = relatedCache.pop()
+          this[CACHE][relatedKey] = undefined
+          invalidateRelated(relatedKey)
+        }
+      }
+
+      // needs to update value and cache
+      // call the defined getter function and invalidate related caches
       if (shouldUpdate) {
-        // needs to update value and cache, run the defined getter function
         this[PROPS][currentKey] = getter.call(this)
+        invalidateRelated(currentKey)
       }
 
       // return the synced cache values
