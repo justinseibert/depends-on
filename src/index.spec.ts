@@ -153,6 +153,31 @@ describe('dependsOn: cache decorator', () => {
     expect(test.random).toEqual(update)
   })
 
+  it('should check for and invalidate related cache items', () => {
+    class Test {
+      c = 0
+
+      @dependsOn(['c'])
+      get a() {
+        return Math.random()
+      }
+
+      @dependsOn(['a'])
+      get b() {
+        return Math.random()
+      }
+    }
+
+    const test = new Test()
+    let a = test.a
+    let b = test.b
+    test.c = 1
+    expect(test.a).not.toEqual(a)
+    let b1 = test.b
+    expect(b1).not.toEqual(b)
+    expect(test.b).toEqual(b1)
+  })
+
   it('should raise when decorating a non-getter', () => {
     expect(() => {
       class Test {
