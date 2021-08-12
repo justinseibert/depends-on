@@ -24,6 +24,56 @@ describe('dependsOn: cache decorator', () => {
     expect(test.random).toEqual(update)
   })
 
+  it('should create a map of related dependencies', () => {
+    class Test {
+      a = 1
+      b = 2
+      c = 3
+
+      @dependsOn(['a', 'b', 'c'])
+      get x() {
+        return Math.random()
+      }
+
+      @dependsOn(['a', 'x'])
+      get y() {
+        return Math.random()
+      }
+    }
+
+    const test = new Test()
+    expect(test.x).toEqual(test.x)
+    expect(test.y).toEqual(test.y)
+
+    expect((test as any).__dependsOn_isInitialized).not.toBeUndefined()
+    expect((test as any).__dependsOn_related.a).toEqual(expect.arrayContaining(['x', 'y']))
+    expect((test as any).__dependsOn_related.a).toEqual(expect.not.arrayContaining(['a', 'b', 'c']))
+    expect((test as any).__dependsOn_related.b).toEqual(expect.arrayContaining(['x']))
+    expect((test as any).__dependsOn_related.c).toEqual(expect.arrayContaining(['x']))
+    expect((test as any).__dependsOn_related.x).toEqual(expect.arrayContaining(['y']))
+  })
+
+  it ('should create cache on first get', () => {
+    class Test {
+      i = 0
+      bool = true
+
+      @dependsOn(['bool'])
+      get counter() {
+        return ++this.i
+      }
+    }
+
+    const test = new Test()
+    let initial = test.counter
+
+    expect((test as any).__dependsOn_cache.bool).not.toBeUndefined()
+    expect((test as any).__dependsOn_cache.counter).not.toBeUndefined()
+    
+    expect((test as any).__dependsOn_cache.bool).toEqual(true)
+    expect((test as any).__dependsOn_cache.counter).toEqual(1)
+  })
+
   it('should cache getter for one dependent property', () => {
     class Test {
       bool = false
