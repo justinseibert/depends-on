@@ -2,9 +2,9 @@ export interface CachePropertyDescriptor<T, R> extends PropertyDescriptor {
   get?: (this: T) => R
 };
 
-const PROPS = `__dependsOn_properties`
-const CACHE = `__dependsOn_comparator`
-const RELAT = `__dependsOn_related`
+const INIT = `__dependsOn_isInitialized`
+const CACH = `__dependsOn_cache`
+const RELA = `__dependsOn_related`
 
 const dependsOn = function (dependencies: string[]) {
   return function <T,R>(target: any, key: PropertyKey, descriptor: CachePropertyDescriptor<T, R>) {
@@ -19,90 +19,78 @@ const dependsOn = function (dependencies: string[]) {
     const currentKey = String(key)
     
     // adds cache trackers to the object instance
-    const addCacheInstance = function (_this: any) {
-      [PROPS, CACHE, RELAT].forEach((item: string) => {
-        _this[item] = _this[item] || {}
+    const initializeCache = function (instance: any) {
+      [INIT, CACH, RELA].forEach((item: string) => {
+        instance[item] = instance[item] || {}
       })
+    }
+
+    // set all initial values for dependent properties
+    // set initialization key to avoid performing more than once
+    const initializeRelated = function(instance: any) {
+      if (typeof instance[INIT][currentKey] === 'undefined') {
+        dependencies.forEach((dependency: string) => {
+          const property = Object.getOwnPropertyDescriptor(instance, dependency)
+          if (property && instance[CACH][dependency] !== property.value) {
+            instance[CACH][dependency] = property.value
+          }
+          instance[RELA][dependency] = [...(instance[RELA][dependency] || []), currentKey]
+        })
+      }
+      instance[INIT][currentKey] = true
+    }
+
+    // if cache is invalid, invalidate all related items too
+    const invalidateRelated = (instance: any, cacheKey: string) => {
+      const relatedCache = [...(instance[RELA][cacheKey] || [])]
+
+      while (relatedCache.length) {
+        const relatedKey = relatedCache.pop()
+        instance[CACH][relatedKey] = undefined
+        invalidateRelated(instance, relatedKey)
+      }
     }
     
     descriptor.get = function (this: any) {
-      addCacheInstance(this)
-      // set all initial values for dependent properties
-      // perform only during first access
-      if (typeof this[PROPS][currentKey] === 'undefined') {
-        dependencies.forEach((dependency: string) => {
-          const propertyDescriptor = Object.getOwnPropertyDescriptor(this, dependency)
-          if (
-            propertyDescriptor &&
-            typeof this[PROPS][dependency] === 'undefined'
-          ) {
-            // current dependency is a property, record new values to cache
-            this[PROPS][dependency] = propertyDescriptor.value
-            this[CACHE][dependency] = this[PROPS][dependency]
-          }
-          // record an array of items that depend on this value (i.e. reverse dependencies)
-          this[RELAT][dependency] = [...(this[RELAT][dependency] || []), currentKey]
-        })
-      }
-
+      initializeCache(this)
+      initializeRelated(this)
       // add current key to dependencies array in order to force an initial update or shortcut an invalidated cache
       // check for any undefined/invalid caches to determine whether an update is necessary
       const shouldUpdate = [currentKey, ...dependencies].findIndex((dependency: string) => {
-        // test cached getter values
-        if (
-          typeof this[CACHE][dependency] === 'undefined' ||
-          typeof this[PROPS][dependency] === 'undefined' ||
-          this[PROPS][dependency] !== this[CACHE][dependency]
-          ) {
-            // current dependency's cached values are new or invalid
-            return true
-          }
-          
-        // test cached property values
-        const propertyDescriptor = Object.getOwnPropertyDescriptor(this, dependency)
-        if (
-          propertyDescriptor &&
-          (this[PROPS][dependency] !== propertyDescriptor.value ||
-          typeof this[CACHE][dependency] === 'undefined')
-        ) {
-          // current dependency is a property with a new value, record to cache
-          this[PROPS][dependency] = propertyDescriptor.value
-          this[CACHE][dependency] = this[PROPS][dependency]
+        // test that cache value exists or is valid
+        if (typeof this[CACH][dependency] === 'undefined') {
+          return true
+        }
+        
+        // test that property value is valid
+        const property = Object.getOwnPropertyDescriptor(this, dependency)
+        if (property && this[CACH][dependency] !== property.value) {
+          this[CACH][dependency] = property.value
           return true
         }
 
         // cached dependency is valid, no update necesssary
         return false
       }) > -1
-
-      // if cache is invalid, invalidate all related items too
-      const invalidateRelated = (cacheKey: string) => {
-        const relatedCache = [ ...(this[RELAT][cacheKey] || []) ]
-        
-        while(relatedCache.length) {
-          const relatedKey = relatedCache.pop()
-          this[CACHE][relatedKey] = undefined
-          invalidateRelated(relatedKey)
-        }
-      }
+      
 
       // needs to update value and cache
-      // call the defined getter function and invalidate related caches
+      // call the originally defined getter function and invalidate related caches
       if (shouldUpdate) {
-        this[PROPS][currentKey] = getter.call(this)
-        invalidateRelated(currentKey)
+        this[CACH][currentKey] = getter.call(this)
+        invalidateRelated(this, currentKey)
       }
 
       // return the synced cache values
-      return this[CACHE][currentKey] = this[PROPS][currentKey]
+      return this[CACH][currentKey]
     }
 
     // setter wrapper ensures the cache is also updated
     if (setter) {
       descriptor.set = function (this: any, value: any) {
-        addCacheInstance(this)
+        initializeCache(this)
 
-        this[CACHE][currentKey] = this[PROPS][currentKey] = value
+        this[CACH][currentKey] = value
         setter && setter.call(this, value)
       }
     }
