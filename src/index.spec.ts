@@ -1,3 +1,4 @@
+import { DEPO, INIT, CACH, RELA } from './constants'
 import dependsOn from './index'
 
 describe('dependsOn: cache decorator', () => {
@@ -45,12 +46,12 @@ describe('dependsOn: cache decorator', () => {
     expect(test.x).toEqual(test.x)
     expect(test.y).toEqual(test.y)
 
-    expect((test as any).__dependsOn_isInitialized).not.toBeUndefined()
-    expect((test as any).__dependsOn_related.a).toEqual(expect.arrayContaining(['x', 'y']))
-    expect((test as any).__dependsOn_related.a).toEqual(expect.not.arrayContaining(['a', 'b', 'c']))
-    expect((test as any).__dependsOn_related.b).toEqual(expect.arrayContaining(['x']))
-    expect((test as any).__dependsOn_related.c).toEqual(expect.arrayContaining(['x']))
-    expect((test as any).__dependsOn_related.x).toEqual(expect.arrayContaining(['y']))
+    expect((test as any)[DEPO][INIT]).not.toBeUndefined()
+    expect((test as any)[DEPO][RELA].a).toEqual(expect.arrayContaining(['x', 'y']))
+    expect((test as any)[DEPO][RELA].a).toEqual(expect.not.arrayContaining(['a', 'b', 'c']))
+    expect((test as any)[DEPO][RELA].b).toEqual(expect.arrayContaining(['x']))
+    expect((test as any)[DEPO][RELA].c).toEqual(expect.arrayContaining(['x']))
+    expect((test as any)[DEPO][RELA].x).toEqual(expect.arrayContaining(['y']))
   })
 
   it ('should create cache on first get', () => {
@@ -67,11 +68,11 @@ describe('dependsOn: cache decorator', () => {
     const test = new Test()
     let initial = test.counter
 
-    expect((test as any).__dependsOn_cache.bool).not.toBeUndefined()
-    expect((test as any).__dependsOn_cache.counter).not.toBeUndefined()
+    expect((test as any)[DEPO][CACH].bool).not.toBeUndefined()
+    expect((test as any)[DEPO][CACH].counter).not.toBeUndefined()
     
-    expect((test as any).__dependsOn_cache.bool).toEqual(true)
-    expect((test as any).__dependsOn_cache.counter).toEqual(1)
+    expect((test as any)[DEPO][CACH].bool).toEqual(true)
+    expect((test as any)[DEPO][CACH].counter).toEqual(1)
   })
 
   it('should cache getter for one dependent property', () => {
