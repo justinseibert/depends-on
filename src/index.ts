@@ -6,32 +6,27 @@ const PROPS = `__dependsOn_properties`
 const CACHE = `__dependsOn_comparator`
 const RELAT = `__dependsOn_related`
 
-const dependsOn = (dependencies: string[]) => {
+const dependsOn = function (dependencies: string[]) {
   return function <T,R>(target: any, key: PropertyKey, descriptor: CachePropertyDescriptor<T, R>) {
-    // adds cache trackers to the object
-    [PROPS, CACHE, RELAT].forEach((item: string) => {
-      if (target[item]) {
-        return
-      }
-      Object.defineProperty(target, item, {
-        configurable: true,
-        enumerable: true,
-        writable: true,
-        value: {},
-      })
-    })
-
     // record any existing get/set actions
     const getter = descriptor.get
     const setter = descriptor.set
-
+    
     if (!getter) {
       throw new TypeError('The dependsOn decorator expects a getter')
     }
-
+    
     const currentKey = String(key)
     
+    // adds cache trackers to the object instance
+    const addCacheInstance = function (_this: any) {
+      [PROPS, CACHE, RELAT].forEach((item: string) => {
+        _this[item] = _this[item] || {}
+      })
+    }
+    
     descriptor.get = function (this: any) {
+      addCacheInstance(this)
       // set all initial values for dependent properties
       // perform only during first access
       if (typeof this[PROPS][currentKey] === 'undefined') {
@@ -105,6 +100,8 @@ const dependsOn = (dependencies: string[]) => {
     // setter wrapper ensures the cache is also updated
     if (setter) {
       descriptor.set = function (this: any, value: any) {
+        addCacheInstance(this)
+
         this[CACHE][currentKey] = this[PROPS][currentKey] = value
         setter && setter.call(this, value)
       }

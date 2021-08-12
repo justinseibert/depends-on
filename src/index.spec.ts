@@ -178,6 +178,32 @@ describe('dependsOn: cache decorator', () => {
     expect(test.b).toEqual(b1)
   })
 
+  it('should create a unique cache per instance', () => {
+    class Test {
+      i = 0
+      update = 0
+
+      @dependsOn(['update'])
+      get increment() {
+        return ++ this.i
+      }
+    }
+
+    const testA = new Test()
+    const testB = new Test()
+
+    let incA = testA.increment
+    testA.update ++
+    expect(testA.increment).toEqual(2)
+    expect(testA.increment).not.toEqual(incA)
+    expect(testA.increment).not.toEqual(incA)
+    
+    expect(testB.increment).toEqual(1)
+    testA.update ++
+    testB.update ++
+    expect(testA.increment).not.toEqual(testB.increment)
+  })
+
   it('should raise when decorating a non-getter', () => {
     expect(() => {
       class Test {
