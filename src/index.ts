@@ -1,4 +1,4 @@
-import { DEPO, INIT, CACH, RELA } from './constants'
+import { DEPO, INIT, CACH, RELA, SETT } from './constants'
 
 export interface CachePropertyDescriptor<T, R> extends PropertyDescriptor {
   get?: (this: T) => R
@@ -10,6 +10,7 @@ const initializeCache = function (instance: any) {
     [INIT]: {},
     [CACH]: {},
     [RELA]: {},
+    [SETT]: {},
   }
 }
 
@@ -64,10 +65,14 @@ const dependsOn = function (dependencies: string[]) {
         // test that property value is valid
         const property = Object.getOwnPropertyDescriptor(this, dependency)
         if (property && this[DEPO][CACH][dependency] !== property.value) {
+          // update the property cache
           this[DEPO][CACH][dependency] = property.value
-          return true
+          
+          // if the last update occurred via setter function...
+          // the dependent properties may have been manually altered in the setter function
+          // but the current value should be honored
+          return typeof this[DEPO][SETT][currentKey] === 'undefined'
         }
-
         // cached dependency is valid, no update necesssary
         return false
       }) > -1
@@ -79,6 +84,9 @@ const dependsOn = function (dependencies: string[]) {
         invalidateRelated(this, currentKey)
       }
 
+      // remove the property that may denote last value was manually set
+      this[DEPO][SETT][currentKey] = undefined
+
       // return the synced cache values
       return this[DEPO][CACH][currentKey]
     }
@@ -89,8 +97,11 @@ const dependsOn = function (dependencies: string[]) {
         initializeCache(this)
         initializeRelated(this, currentKey, dependencies)
 
-        this[DEPO][CACH][currentKey] = value
+        invalidateRelated(this, currentKey)    
         setter && setter.call(this, value)
+        
+        this[DEPO][SETT][currentKey] = true
+        this[DEPO][CACH][currentKey] = value
       }
     }
   }

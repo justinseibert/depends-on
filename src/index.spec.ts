@@ -204,6 +204,78 @@ describe('dependsOn: cache decorator', () => {
     expect(test.random).toEqual(update)
   })
 
+  it ('should update cached value with a set value and assume dependent properties were also updated', () => {
+    class Test {
+      a = 0
+      b = 0
+
+      @dependsOn(['a', 'b'])
+      get random() {
+        return Math.random()
+      }
+
+      set random(value: number) {
+        this.a++
+        this.b++
+      }
+    }
+
+    const test = new Test()
+    test.random = 5
+    expect(test.a).toEqual(1)
+    expect(test.b).toEqual(1)
+
+    expect(test.random).toEqual(5)
+    expect(test.random).toEqual(5)
+    
+    test.b = 0
+    expect(test.random).not.toEqual(5)
+  })
+
+  it ('should update cached value with a set value and assume dependent getters were also updated', () => {
+    class Test {
+      a = 0
+
+      @dependsOn(['a'])
+      get b() {
+        return Math.random()
+      }
+
+      set b(value: number) {
+        this.a ++
+      }
+
+      @dependsOn(['b'])
+      get random() {
+        return Math.random()
+      }
+
+      set random(value: number) {
+        this.b = 10
+      }
+    }
+
+    const test = new Test()
+    test.random = 5
+    expect(test.random).toEqual(5)
+    
+    expect(test.a).toEqual(1)
+    expect(test.b).toEqual(10)
+    expect(test.b).toEqual(10)
+    
+    expect(test.random).toEqual(5)
+    expect(test.random).toEqual(5)
+    
+    test.b = 20
+    expect(test.a).toEqual(2)
+    expect(test.random).not.toEqual(5)
+    
+    test.random = 5
+    test.a = 10
+    expect(test.b).not.toEqual(20)
+    expect(test.random).not.toEqual(5)
+  })
+
   it('should check for and invalidate related cache items', () => {
     class Test {
       c = 0
