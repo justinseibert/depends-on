@@ -1,6 +1,6 @@
 {
   "name": "@justinseibert/depends-on",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "A decorator for caching class getters and updating the cache based on dependent properties",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",

@@ -1,3 +1,4 @@
+import { DEPO, INIT, CACH, RELA } from './constants'
 import dependsOn from './index'
 
 describe('dependsOn: cache decorator', () => {
@@ -22,6 +23,56 @@ describe('dependsOn: cache decorator', () => {
     expect(update).toEqual(initial)
     expect(test.random).toEqual(initial)
     expect(test.random).toEqual(update)
+  })
+
+  it('should create a map of related dependencies', () => {
+    class Test {
+      a = 1
+      b = 2
+      c = 3
+
+      @dependsOn(['a', 'b', 'c'])
+      get x() {
+        return Math.random()
+      }
+
+      @dependsOn(['a', 'x'])
+      get y() {
+        return Math.random()
+      }
+    }
+
+    const test = new Test()
+    expect(test.x).toEqual(test.x)
+    expect(test.y).toEqual(test.y)
+
+    expect((test as any)[DEPO][INIT]).not.toBeUndefined()
+    expect((test as any)[DEPO][RELA].a).toEqual(expect.arrayContaining(['x', 'y']))
+    expect((test as any)[DEPO][RELA].a).toEqual(expect.not.arrayContaining(['a', 'b', 'c']))
+    expect((test as any)[DEPO][RELA].b).toEqual(expect.arrayContaining(['x']))
+    expect((test as any)[DEPO][RELA].c).toEqual(expect.arrayContaining(['x']))
+    expect((test as any)[DEPO][RELA].x).toEqual(expect.arrayContaining(['y']))
+  })
+
+  it ('should create cache on first get', () => {
+    class Test {
+      i = 0
+      bool = true
+
+      @dependsOn(['bool'])
+      get counter() {
+        return ++this.i
+      }
+    }
+
+    const test = new Test()
+    let initial = test.counter
+
+    expect((test as any)[DEPO][CACH].bool).not.toBeUndefined()
+    expect((test as any)[DEPO][CACH].counter).not.toBeUndefined()
+    
+    expect((test as any)[DEPO][CACH].bool).toEqual(true)
+    expect((test as any)[DEPO][CACH].counter).toEqual(1)
   })
 
   it('should cache getter for one dependent property', () => {
@@ -176,6 +227,32 @@ describe('dependsOn: cache decorator', () => {
     let b1 = test.b
     expect(b1).not.toEqual(b)
     expect(test.b).toEqual(b1)
+  })
+
+  it('should create a unique cache per instance', () => {
+    class Test {
+      i = 0
+      update = 0
+
+      @dependsOn(['update'])
+      get increment() {
+        return ++ this.i
+      }
+    }
+
+    const testA = new Test()
+    const testB = new Test()
+
+    let incA = testA.increment
+    testA.update ++
+    expect(testA.increment).toEqual(2)
+    expect(testA.increment).not.toEqual(incA)
+    expect(testA.increment).not.toEqual(incA)
+    
+    expect(testB.increment).toEqual(1)
+    testA.update ++
+    testB.update ++
+    expect(testA.increment).not.toEqual(testB.increment)
   })
 
   it('should raise when decorating a non-getter', () => {
