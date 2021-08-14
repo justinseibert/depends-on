@@ -10,7 +10,7 @@
   ],
   "scripts": {
     "prettier": "prettier --write",
-    "lint": "tslint \"src/**/*.ts\" --project tsconfig.json",
+    "lint": "eslint ./src/ --ext .ts --fix",
     "format": "npm run prettier -- README.md \"*.json\" \"src/**/*.ts\"",
     "build": "rimraf dist && tsc",
     "specs": "jest --coverage",
@@ -73,17 +73,20 @@
     "access": "public"
   },
   "devDependencies": {
-    "@types/jest": "^24.0.15",
+    "@types/jest": "^27.0.1",
+    "@typescript-eslint/eslint-plugin": "^4.29.1",
+    "@typescript-eslint/parser": "^4.29.1",
+    "eslint": "^7.32.0",
     "husky": "^3.0.0",
-    "jest": "^24.8.0",
+    "jest": "^27.0.6",
     "lint-staged": "^9.2.0",
     "prettier": "^1.16.0",
     "rimraf": "^2.6.3",
-    "ts-jest": "^24.0.2",
+    "ts-jest": "^27.0.4",
     "tslint": "^5.12.1",
     "tslint-config-prettier": "^1.17.0",
     "tslint-config-standard": "^8.0.1",
-    "typescript": "^3.2.4"
+    "typescript": "^4.3.5"
   },
   "dependencies": {}
 }
