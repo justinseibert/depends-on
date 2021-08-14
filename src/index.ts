@@ -115,7 +115,7 @@ const dependsOn = function (dependencies: string[]) {
     _: any,
     key: PropertyKey,
     descriptor: CachePropertyDescriptor<T, R>
-  ) {
+  ): void {
     // record any existing get/set actions
     const getter = descriptor.get
     const setter = descriptor.set

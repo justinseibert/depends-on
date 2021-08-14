@@ -32,12 +32,12 @@ describe('dependsOn: cache decorator', () => {
 
       @dependsOn(['bool'])
       get counter() {
-        return ++this.i
+        return ++ this.i
       }
     }
 
     const test = new Test()
-    let initial = test.counter
+    expect(test.counter).toEqual(1)
     expect((test as any)[DEPO][CACH].bool).not.toBeUndefined()
     expect((test as any)[DEPO][CACH].counter).not.toBeUndefined()
 
@@ -366,11 +366,11 @@ describe('dependsOn: cache decorator', () => {
     }
 
     const test = new Test()
-    let a = test.a
-    let b = test.b
+    const a = test.a
+    const b = test.b
     test.c = 1
     expect(test.a).not.toEqual(a)
-    let b1 = test.b
+    const b1 = test.b
     expect(b1).not.toEqual(b)
     expect(test.b).toEqual(b1)
   })
@@ -389,7 +389,7 @@ describe('dependsOn: cache decorator', () => {
     const testA = new Test()
     const testB = new Test()
 
-    let incA = testA.increment
+    const incA = testA.increment
     testA.update ++
     expect(testA.increment).toEqual(2)
     expect(testA.increment).not.toEqual(incA)
@@ -403,6 +403,7 @@ describe('dependsOn: cache decorator', () => {
 
   it('should raise when decorating a non-getter', () => {
     expect(() => {
+      // eslint-disable-next-line
       class Test {
         @dependsOn([])
         method() {
