@@ -1,7 +1,11 @@
-import { DEPO, INIT, CACH, RELA, SETT } from './constants'
+import { DEPO, INIT, CACH, RELA } from './constants'
 
 export interface CachePropertyDescriptor<T, R> extends PropertyDescriptor {
   get?: (this: T) => R
+}
+
+const isUndefined = (value: any) => {
+  return typeof value === 'undefined'
 }
 
 // adds cache trackers to the object instance
@@ -10,22 +14,45 @@ const initializeCache = function (instance: any) {
     [INIT]: {},
     [CACH]: {},
     [RELA]: {},
-    [SETT]: {},
   }
 }
 
-// set all initial values for dependent properties
-// set initialization key to avoid performing more than once
 const initializeRelated = function (instance: any, currentKey: string, dependencies: string[]) {
-  if (typeof instance[DEPO][INIT][currentKey] === 'undefined') {
-    dependencies.forEach((dependency: string) => {
-      const property = Object.getOwnPropertyDescriptor(instance, dependency)
-      if (property && instance[DEPO][CACH][dependency] !== property.value) {
-        instance[DEPO][CACH][dependency] = property.value
-      }
-      instance[DEPO][RELA][dependency] = [...(instance[DEPO][RELA][dependency] || []), currentKey]
-    })
+  // skip if already initialized for this key
+  if (!isUndefined(instance[DEPO][INIT][currentKey])) {
+    return
   }
+
+  dependencies.forEach((dependency: string) => {
+    // if dependency is a property, convert to accessor
+    const property = Object.getOwnPropertyDescriptor(instance, dependency)
+    // if property has not been initialized
+    if (property && isUndefined(instance[DEPO][INIT][dependency])) {
+      instance[DEPO][CACH][dependency] = property.value
+      
+      Object.defineProperty(instance, dependency,  {
+        // create a getter function that retrieves cached value for this property
+        get: function (this: any) {
+          const getter = function(this: any) {
+            return this[DEPO][CACH][dependency]
+          }
+          return handleGet.call(this, dependency, [], getter)
+        },
+        // create a setter but because this was a property...
+        // there is no original setter function to apply
+        set: function (this: any, value: any) {
+          return handleSet.call(this, dependency, value, [])
+        },
+      })
+      // consider this new accessor to be initialized
+      instance[DEPO][INIT][dependency] = true
+    }
+
+    // map the currentKey as being related to this dependency
+    instance[DEPO][RELA][dependency] = [...(instance[DEPO][RELA][dependency] || []), currentKey]
+  })
+
+  // consider this accessor initialized
   instance[DEPO][INIT][currentKey] = true
 }
 
@@ -40,8 +67,55 @@ const invalidateRelated = (instance: any, cacheKey: string) => {
   }
 }
 
+const handleGet = function(
+  this: any,
+  key: string,
+  dependencies: string[],
+  getter: () => any
+) {
+  initializeCache(this)
+  initializeRelated(this, key, dependencies)
+
+  // add current key to dependencies array in order to force an initial update or shortcut an invalidated cache
+  // check for any undefined/invalid caches to determine whether an update is necessary
+  const shouldUpdate = [key, ...dependencies].findIndex((dependency: string) => {
+    // test that cache value exists or is valid
+    return isUndefined(this[DEPO][CACH][dependency])
+  }) > -1
+
+  // needs to update value and cache
+  // call the originally defined getter function and invalidate related caches
+  if (shouldUpdate) {
+    this[DEPO][CACH][key] = getter.call(this)
+    invalidateRelated(this, key)
+  }
+
+  // return the synced cache values
+  return this[DEPO][CACH][key]
+}
+
+const handleSet = function(
+  this: any,
+  currentKey: string,
+  value: any,
+  dependencies: string[],
+  setter?: (v: any) => void
+) {
+  initializeCache(this)
+  initializeRelated(this, currentKey, dependencies)
+
+  invalidateRelated(this, currentKey)
+  setter && setter.call(this, value)
+
+  this[DEPO][CACH][currentKey] = value
+}
+
 const dependsOn = function (dependencies: string[]) {
-  return function <T,R>(target: any, key: PropertyKey, descriptor: CachePropertyDescriptor<T, R>) {
+  return function <T,R>(
+    _: any,
+    key: PropertyKey,
+    descriptor: CachePropertyDescriptor<T, R>
+  ) {
     // record any existing get/set actions
     const getter = descriptor.get
     const setter = descriptor.set
@@ -49,60 +123,15 @@ const dependsOn = function (dependencies: string[]) {
     if (!getter) {
       throw new TypeError('The dependsOn decorator expects a getter')
     }
-    
+
     const currentKey = String(key)
-    descriptor.get = function (this: any) {
-      initializeCache(this)
-      initializeRelated(this, currentKey, dependencies)
-      // add current key to dependencies array in order to force an initial update or shortcut an invalidated cache
-      // check for any undefined/invalid caches to determine whether an update is necessary
-      const shouldUpdate = [currentKey, ...dependencies].findIndex((dependency: string) => {
-        // test that cache value exists or is valid
-        if (typeof this[DEPO][CACH][dependency] === 'undefined') {
-          return true
-        }
-        
-        // test that property value is valid
-        const property = Object.getOwnPropertyDescriptor(this, dependency)
-        if (property && this[DEPO][CACH][dependency] !== property.value) {
-          // update the property cache
-          this[DEPO][CACH][dependency] = property.value
-          
-          // if the last update occurred via setter function...
-          // the dependent properties may have been manually altered in the setter function
-          // but the current value should be honored
-          return typeof this[DEPO][SETT][currentKey] === 'undefined'
-        }
-        // cached dependency is valid, no update necesssary
-        return false
-      }) > -1
-
-      // needs to update value and cache
-      // call the originally defined getter function and invalidate related caches
-      if (shouldUpdate) {
-        this[DEPO][CACH][currentKey] = getter.call(this)
-        invalidateRelated(this, currentKey)
-      }
-
-      // remove the property that may denote last value was manually set
-      this[DEPO][SETT][currentKey] = undefined
-
-      // return the synced cache values
-      return this[DEPO][CACH][currentKey]
+    
+    descriptor.get = function () {
+      return handleGet.call(this, currentKey, dependencies, getter)
     }
-
-    // setter wrapper ensures the cache is also updated
-    if (setter) {
-      descriptor.set = function (this: any, value: any) {
-        initializeCache(this)
-        initializeRelated(this, currentKey, dependencies)
-
-        invalidateRelated(this, currentKey)    
-        setter && setter.call(this, value)
-        
-        this[DEPO][SETT][currentKey] = true
-        this[DEPO][CACH][currentKey] = value
-      }
+    
+    descriptor.set = function (value: any) {
+      handleSet.call(this, currentKey, value, dependencies, setter)
     }
   }
 }
